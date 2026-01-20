@@ -1,0 +1,35 @@
+{
+  "name": "Roche Corporate",
+  "fonts": {
+    "heading": "Roche Sans",
+    "body": "Roche Sans"
+  },
+  "colors": {
+    "primary": "#0B41CD",
+    "secondary": "#022366",
+    "tertiary": "#1482FA",
+    "header_text": "#FFFFFF",
+    "borders": "#b0aea5"
+  },
+  "excel": {
+    "show_gridlines": false,
+    "header_borders": false,
+    "alternating_rows": true
+  },
+  "analytics": {
+    "rules": [
+      {
+        "column_pattern": "p-value|significance|error",
+        "condition": "lessThan",
+        "value": 0.05,
+        "style": { "bg_color": "E5F9EB", "font_color": "007a3b" }
+      },
+      {
+        "column_pattern": "score|rating",
+        "condition": "greaterThan",
+        "value": 90,
+        "style": { "bg_color": "E5F9EB", "font_color": "007a3b" }
+      }
+    ]
+  }
+}

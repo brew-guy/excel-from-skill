@@ -147,72 +147,102 @@ def apply_branding(worksheet: Any, df: pd.DataFrame | None, brand: dict[str, Any
     # 0. Sheet Options
     worksheet.sheet_view.showGridLines = show_gridlines
 
-    # 1. Header Styling
+    # Defines styles
     header_font = Font(name=font_heading, bold=True, color=c_header_text)
     header_fill = PatternFill(start_color=c_primary, end_color=c_primary, fill_type="solid")
-    
-    # Border Style
+    body_font = Font(name=font_body)
     thin_border = Side(border_style="thin", color=c_borders)
     bottom_border = Border(bottom=thin_border) if use_borders else Border()
 
-    for cell in worksheet[1]:
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="left", vertical="center")
-        if use_borders:
-            cell.border = bottom_border
-
-    # 2. Body Styling
-    body_font = Font(name=font_body)
+    # Determine areas to style
+    style_ranges = []
     
-    # Row Iterator (start from 2)
-    for row_idx, row in enumerate(worksheet.iter_rows(min_row=2), start=2):
-        for cell in row:
-            cell.font = body_font
+    # Logic A: If Excel Tables exist, style them specifically
+    if hasattr(worksheet, "tables") and worksheet.tables:
+        for tbl in worksheet.tables.values():
+            # Table range is a string like "A1:C4"
+            style_ranges.append(worksheet[tbl.ref])
+    
+    # Logic B: If no tables, try to detect data block
+    if not style_ranges:
+        # If df is provided (new generation), assumes starts at A1
+        if df is not None:
+             # Basic A1 start
+             min_row, min_col = 1, 1
+             max_row, max_col = len(df) + 1, len(df.columns)
+             style_ranges.append(worksheet.iter_rows(min_row=min_row, max_row=max_row, min_col=min_col, max_col=max_col))
+        else:
+             # Heuristic for existing sheet: use used range
+             # But check if used range is non-empty
+             if worksheet.max_row >= 1 and worksheet.max_column >= 1:
+                 style_ranges.append(worksheet.iter_rows(min_row=worksheet.min_row, max_row=worksheet.max_row, min_col=worksheet.min_column, max_col=worksheet.max_column))
+
+    # Apply styles to identified ranges
+    for row_block in style_ranges:
+        # Convert row_block to list of rows if it's not already (iter_rows returns generator)
+        rows = list(row_block)
+        if not rows:
+            continue
             
-            # Alternating Rows (Zebra Striping)
-            if alternating and row_idx % 2 == 0:
-                 # Very subtle grey for alternate rows (hardcoded or derived?)
-                 # Using a very light grey
-                 cell.fill = PatternFill(start_color="f9f9f9", end_color="f9f9f9", fill_type="solid")
+        # Treat first row of the block as header
+        header_row = rows[0]
+        for cell in header_row:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+            if use_borders:
+                cell.border = bottom_border
+        
+        # Body rows
+        for i, row in enumerate(rows[1:]):
+            for cell in row:
+                cell.font = body_font
+                
+                # Alternating Rows
+                if alternating and i % 2 == 0:
+                     cell.fill = PatternFill(start_color="f9f9f9", end_color="f9f9f9", fill_type="solid")
 
-    # 3. Auto-size columns
-    for i, column in enumerate(worksheet.columns):
+        # Apply Conditional Formatting to this block
+        # Determine bounds
+        start_row_idx = header_row[0].row + 1 # Start data after header
+        end_row_idx = rows[-1][0].row
+        apply_conditional_formatting_region(worksheet, brand, header_row, start_row_idx, end_row_idx)
+
+    # 3. Auto-size columns (global for sheet)
+    for column in worksheet.columns:
         max_length = 0
-        column_letter = get_column_letter(i + 1)
+        column_letter = get_column_letter(column[0].column)
         
-        # Check header length
-        header_val = column[0].value
-        if header_val:
-            max_length = len(str(header_val))
-        
-        # Check data length (sample first 100 rows for speed)
-        for cell in column[1:101]:
-            try:
-                if cell.value:
-                    max_length = max(max_length, len(str(cell.value)))
-            except:
-                pass
-        
+        # Sample checking
+        try:
+             for cell in column[:100]:
+                 if cell.value:
+                     max_length = max(max_length, len(str(cell.value)))
+        except:
+            pass
+            
         adjusted_width = (max_length + 2) * 1.1
-        worksheet.column_dimensions[column_letter].width = min(adjusted_width, 50)  # Cap width
-
-    # 4. Conditional Formatting (Analytics)
-    apply_conditional_formatting(worksheet, brand)
+        worksheet.column_dimensions[column_letter].width = min(adjusted_width, 50)
 
 
 def apply_conditional_formatting(worksheet: Any, brand: dict[str, Any]) -> None:
-    """Apply rule-based conditional formatting."""
+    """Legacy wrapper for backward compatibility or global usage."""
+    # This assumes Row 1 headers if called directly.
+    # In the new flow, apply_branding handles it.
+    pass
+
+
+def apply_conditional_formatting_region(worksheet: Any, brand: dict[str, Any], header_row: tuple, start_row: int, end_row: int) -> None:
+    """Apply rule-based conditional formatting to a specific region."""
     analytics = brand.get("analytics", {})
     rules = analytics.get("rules", [])
     
     if not rules:
         return
 
-    # Map column names to letters
-    # Assumes Row 1 is header
+    # Map column names to letters WITHIN this region
     headers = {}
-    for cell in worksheet[1]:
+    for cell in header_row:
         if cell.value:
             headers[str(cell.value)] = cell.column_letter
 
@@ -226,15 +256,14 @@ def apply_conditional_formatting(worksheet: Any, brand: dict[str, Any]) -> None:
             continue
             
         # Create DXF Style
-        # Note: openpyxl colors for DXF often need ARGB but we allow RGB hex
         dxf_font = None
         dxf_fill = None
         
         if "font_color" in style:
+            # openpyxl Colors
             dxf_font = Font(color=Color(rgb="FF" + style["font_color"].replace("#", "")))
         
         if "bg_color" in style:
-            # For DifferentialStyle, PatternFill often needs to be specific
             dxf_fill = PatternFill(start_color=Color(rgb="FF" + style["bg_color"].replace("#", "")), 
                                    end_color=Color(rgb="FF" + style["bg_color"].replace("#", "")),
                                    fill_type="solid")
@@ -245,13 +274,10 @@ def apply_conditional_formatting(worksheet: Any, brand: dict[str, Any]) -> None:
         regex = re.compile(pattern, re.IGNORECASE)
         for col_name, col_letter in headers.items():
             if regex.search(col_name):
-                # Apply rule to the whole column (excluding header)
-                # E.g. B2:B1048576
-                cell_range = f"{col_letter}2:{col_letter}{worksheet.max_row}"
+                # Apply rule to the column within bounds
+                cell_range = f"{col_letter}{start_row}:{col_letter}{end_row}"
                 
                 # Construct OpenPyXL Rule
-                # Mapping user conditions to OpenPyXL operators
-                # lessThan, greaterThan, equal, etc.
                 op = condition if condition in ["lessThan", "greaterThan", "equal"] else "lessThan"
                 
                 formatting_rule = CellIsRule(operator=op, formula=[val], stopIfTrue=True)
