@@ -1,0 +1,21 @@
+{
+    "name": "Anthropic Benchmark",
+    "fonts": {
+        "heading": "Poppins",
+        "body": "Lora"
+    },
+    "colors": {
+        "primary": "#d97757",
+        "secondary": "#6a9bcc",
+        "tertiary": "#788c5d",
+        "background": "#faf9f5",
+        "text": "#141413",
+        "header_text": "#ffffff",
+        "borders": "#b0aea5"
+    },
+    "excel": {
+        "show_gridlines": false,
+        "header_borders": true,
+        "alternating_rows": true
+    }
+}

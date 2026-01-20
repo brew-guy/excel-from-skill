@@ -1,0 +1,44 @@
+[
+    {
+        "BatchID": "B001",
+        "Product": "Aspirin",
+        "Yield": 98.5,
+        "P-Value": 0.04,
+        "Status": "Released"
+    },
+    {
+        "BatchID": "B002",
+        "Product": "Aspirin",
+        "Yield": 99.2,
+        "P-Value": 0.01,
+        "Status": "Released"
+    },
+    {
+        "BatchID": "B003",
+        "Product": "Aspirin",
+        "Yield": 88.4,
+        "P-Value": 0.15,
+        "Status": "Rejected"
+    },
+    {
+        "BatchID": "B004",
+        "Product": "Tylenol",
+        "Yield": 94.1,
+        "P-Value": 0.049,
+        "Status": "Released"
+    },
+    {
+        "BatchID": "B005",
+        "Product": "Tylenol",
+        "Yield": 92.0,
+        "P-Value": 0.06,
+        "Status": "Investigation"
+    },
+    {
+        "BatchID": "B006",
+        "Product": "Tylenol",
+        "Yield": 99.9,
+        "P-Value": 0.001,
+        "Status": "Released"
+    }
+]
